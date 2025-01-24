@@ -11,6 +11,7 @@ export interface Project {
   companyName: string
   companyLogo?: string
   status: 'open' | 'closed' | 'in-progress' | 'archived'
+  isArchived: boolean
   startDate?: Date
   createdAt: Date
   updatedAt: Date

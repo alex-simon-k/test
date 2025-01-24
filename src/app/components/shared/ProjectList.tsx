@@ -14,12 +14,11 @@ interface ProjectListProps {
 export default function ProjectList({ projects }: ProjectListProps) {
   const { user } = useAuth()
 
-  const handleArchiveProject = async (projectId: string, currentStatus: string) => {
+  const handleArchiveProject = async (projectId: string, currentlyArchived: boolean) => {
     if (!user) return
     
-    const newStatus = currentStatus === 'archived' ? 'in-progress' : 'archived'
-    const message = currentStatus === 'archived' 
-      ? 'Are you sure you want to unarchive this project?' 
+    const message = currentlyArchived
+      ? 'Are you sure you want to unarchive this project?'
       : 'Are you sure you want to archive this project? This will hide it from the main dashboard.'
     
     if (!window.confirm(message)) return
@@ -27,9 +26,11 @@ export default function ProjectList({ projects }: ProjectListProps) {
     try {
       const projectRef = doc(db, 'projects', projectId)
       await updateDoc(projectRef, {
-        status: newStatus,
+        status: currentlyArchived ? 'in-progress' : 'archived',
+        isArchived: !currentlyArchived,
         updatedAt: new Date()
       })
+      console.log(`Project ${projectId} ${currentlyArchived ? 'unarchived' : 'archived'} successfully`)
     } catch (error) {
       console.error('Error updating project status:', error)
       alert('Failed to update project status. Please try again.')
@@ -71,14 +72,14 @@ export default function ProjectList({ projects }: ProjectListProps) {
               </Link>
               {project.companyId === user?.uid && (
                 <button
-                  onClick={() => handleArchiveProject(project.id, project.status)}
+                  onClick={() => handleArchiveProject(project.id, project.isArchived)}
                   className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    project.status === 'archived'
+                    project.isArchived
                       ? 'text-green-600 bg-green-50 hover:bg-green-100'
                       : 'text-gray-600 bg-gray-50 hover:bg-gray-100'
                   }`}
                 >
-                  {project.status === 'archived' ? 'Unarchive' : 'Archive'}
+                  {project.isArchived ? 'Unarchive' : 'Archive'}
                 </button>
               )}
             </div>
@@ -90,12 +91,12 @@ export default function ProjectList({ projects }: ProjectListProps) {
             <div className="flex items-center">
               <span className="text-gray-500 mr-2">Status:</span>
               <span className={`capitalize ${
-                project.status === 'archived' ? 'text-gray-500' :
+                project.isArchived ? 'text-gray-500' :
                 project.status === 'in-progress' ? 'text-blue-600' :
                 project.status === 'closed' ? 'text-red-600' :
                 'text-green-600'
               }`}>
-                {project.status}
+                {project.isArchived ? 'Archived' : project.status}
               </span>
             </div>
             <div className="flex items-center">

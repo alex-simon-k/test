@@ -8,6 +8,7 @@ import { useRouter, useParams } from 'next/navigation'
 import ProjectHeader from '@/app/components/projects/ProjectHeader'
 import TaskBoard from '@/app/components/projects/TaskBoard'
 import ProjectChat from '@/app/components/projects/ProjectChat'
+import TeamProfiles from '@/app/components/projects/TeamProfiles'
 import InviteStudents from '@/app/components/projects/InviteStudents'
 
 export default function ProjectDetails() {
@@ -17,7 +18,7 @@ export default function ProjectDetails() {
   const [loading, setLoading] = useState(true)
   const [project, setProject] = useState<any>(null)
   const [isCompanyOwner, setIsCompanyOwner] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'chat'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'tasks' | 'chat'>('overview')
   const [userRole, setUserRole] = useState<'company' | 'student' | null>(null)
   
   // Get projectId from params
@@ -34,9 +35,29 @@ export default function ProjectDetails() {
       return
     }
 
+    const migrateArchivedProjects = async () => {
+      try {
+        const projectRef = doc(db, 'projects', projectId)
+        const projectSnap = await getDoc(projectRef)
+        
+        if (projectSnap.exists()) {
+          const projectData = projectSnap.data()
+          // If project is archived but doesn't have isArchived field
+          if (projectData.status === 'archived' && projectData.isArchived === undefined) {
+            await updateDoc(projectRef, {
+              isArchived: true
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error migrating archived project:', error)
+      }
+    }
+
     const fetchProject = async () => {
       try {
         console.log('Fetching project with ID:', projectId)
+        await migrateArchivedProjects() // Run migration before fetching project
         const projectRef = doc(db, 'projects', projectId)
         const projectSnap = await getDoc(projectRef)
         
@@ -93,6 +114,7 @@ export default function ProjectDetails() {
       const projectRef = doc(db, 'projects', projectId)
       await updateDoc(projectRef, {
         status: 'archived',
+        isArchived: true,
         updatedAt: new Date()
       })
 
@@ -110,6 +132,7 @@ export default function ProjectDetails() {
       const projectRef = doc(db, 'projects', projectId)
       await updateDoc(projectRef, {
         status: 'in-progress',
+        isArchived: false,
         updatedAt: new Date()
       })
     } catch (error) {
@@ -158,6 +181,16 @@ export default function ProjectDetails() {
               }`}
             >
               Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('team')}
+              className={`px-4 py-2 rounded-lg ${
+                activeTab === 'team'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              Team
             </button>
             <button
               onClick={() => setActiveTab('tasks')}
@@ -234,6 +267,14 @@ export default function ProjectDetails() {
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'team' && (
+          <TeamProfiles 
+            projectId={projectId}
+            members={project.members || {}}
+            companyId={project.companyId}
+          />
         )}
 
         {activeTab === 'tasks' && (
